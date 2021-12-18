@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-
+#include<bits/stdc++.h>
 namespace Bdd
 {
   template <typename node>
@@ -45,7 +45,9 @@ namespace Bdd
     virtual node VecCompose( node const & x, std::vector<node> & cs );
 
     virtual void Support( node const & x, std::vector<int> & vVars );
-    
+    virtual bool GetCEX(node const & x, std::vector<int> & cex, std::vector<std::string> const & pi_names, std::map<std::string, std::string> & track, int & visited, int & path);
+    virtual	void splitIn(std::string & in1, std::string & in2, std::string in);
+    virtual bool Conflict(int const val, std::string const in, std::map<std::string, std::string> & track, int & path);
     virtual void PrintStats( std::vector<node> & vNodes ) { (void)vNodes; }
   };
   
@@ -199,5 +201,88 @@ namespace Bdd
 	    vVars.push_back( i );
 	  }
       }
+  }
+  
+  template <typename node>
+  void BddMan<node>::splitIn(std::string & in1, std::string & in2, std::string in)
+  {
+  	std::string pi;
+  	for(auto ch : in)
+	{
+		if(ch == '_')
+		{
+			in1 = pi;
+			pi = "";
+		}else{
+			pi += ch;
+		}
+		in2 = pi;
+	}
+  }
+  
+  template <typename node>
+  bool BddMan<node>::Conflict(int const val, std::string const in, std::map<std::string, std::string> & track, int & path)
+  {
+  	std::string in1;
+  	std::string in2;
+  	splitIn(in1, in2, in);
+  	if(val == 1)
+  	{
+  		if(track.at(in1) == "0"){
+  			path+=1;
+  			return true;
+  		}else if(track.at(in1) == "U"){
+  			track.at(in1) = "1";
+  		}else{
+  			return false;
+  		}
+  	}
+  	if(val == 0)
+  	{
+  		if(track.at(in1) == "1"){
+  			path+=1;
+  			return true;
+  		}else if(track.at(in1) == "U"){
+  			track.at(in1) = "0";
+  		}else{
+  			return false;
+  		}
+  	}
+  	return false;
+  }
+  
+  
+  template <typename node>
+  bool BddMan<node>::GetCEX(node const & x, std::vector<int> & cex, std::vector<std::string> const & pi_names, std::map<std::string, std::string> & track, int & visited, int & path)
+  {
+  	std::map<std::string, std::string> temp = track;
+  	visited+=1;
+  	if( x == Const0() )
+  	{
+  		path+=1;
+  		return false;
+  	}
+  	if( x == Const1() )
+  	{
+  		path+=1;
+  		return true;
+  	}
+  	cex[Var(x)] = true;
+  	if(!Conflict(1, pi_names[Var(x)], track, path)){
+  	if( GetCEX(Then(x), cex, pi_names, track, visited, path) )
+  	{
+  		return true;
+  	}
+  	}
+  	track = temp;
+  	cex[Var(x)] = false;
+  	if(!Conflict(0, pi_names[Var(x)], track, path)){
+  	if( GetCEX(Else(x), cex, pi_names, track, visited, path) )
+  	{
+  		return true;
+  	}
+  	}
+  	track = temp;
+  	return false;
   }
 }
